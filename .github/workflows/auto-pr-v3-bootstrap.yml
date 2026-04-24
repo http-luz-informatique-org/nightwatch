@@ -16,7 +16,7 @@ on:
         required: false
         default: "Ajoute orchestrateur v3, finalize, scripts install, Makefile, et maj README."
 
-# GitHub bascule progressivement les GitHub Actions JS vers Node 24 (Node 20 déprécié). [4](https://stackoverflow.com/questions/24713112/why-does-my-github-page-not-update-its-content)
+# Tester Node 24 dès maintenant (Node 20 est en dépréciation dans GitHub Actions). [6](https://www.baeldung.com/ops/github-actions-create-pr)
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -34,6 +34,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+          # IMPORTANT : utiliser un PAT avec permission "Workflows: Read & Write"
+          # sinon GitHub refuse de pousser des fichiers dans .github/workflows/* [1](https://www.linkedin.com/posts/promise-igbo_i-just-reviewed-a-dependabot-pr-that-bumped-activity-7379100579232641024-EbTw)[2](https://github.blog/changelog/2024-03-06-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/)
+          token: ${{ secrets.WORKFLOW_TOKEN }}
 
       - name: Ensure folders
         shell: bash
@@ -87,6 +90,7 @@ jobs:
                   with:
                     fetch-depth: 0
                     persist-credentials: true
+                    token: ${{ secrets.WORKFLOW_TOKEN }}
 
                 - name: Configure git
                   run: |
@@ -157,7 +161,7 @@ jobs:
                 - name: Create PR release/v3 -> main
                   uses: peter-evans/create-pull-request@v8
                   with:
-                    token: ${{ secrets.GITHUB_TOKEN }}
+                    token: ${{ secrets.WORKFLOW_TOKEN }}
                     branch: ${{ inputs.release_branch }}
                     title: "release: v${{ inputs.version }} (merge branches)"
                     body: |
@@ -201,6 +205,7 @@ jobs:
                   with:
                     fetch-depth: 0
                     persist-credentials: true
+                    token: ${{ secrets.WORKFLOW_TOKEN }}
 
                 - name: Create tag
                   run: |
@@ -287,25 +292,19 @@ jobs:
           echo "=== $title ==="
           case "$stack" in
             "API Node")
-              setup_api
-              run_api
+              setup_api; run_api
               info "API → http://127.0.0.1:8080  (/health, /ready)"
               ;;
             "Laravel (PHP)")
-              setup_laravel
-              run_laravel
+              setup_laravel; run_laravel
               info "Laravel → http://127.0.0.1:8000  (/up, /health, /ready)"
               ;;
             "API Node + Laravel")
-              setup_api
-              setup_laravel
-              run_api
-              run_laravel
+              setup_api; setup_laravel; run_api; run_laravel
               info "API   → http://127.0.0.1:8080  (/health, /ready)"
               info "Laravel → http://127.0.0.1:8000  (/up, /health, /ready)"
               ;;
           esac
-
           info "Terminé."
           BASH
 
@@ -314,12 +313,12 @@ jobs:
         run: chmod +x scripts/install.sh
 
       # -------------------------
-      # (D) Create Pull Request
+      # (D) Create Pull Request (utilise WORKFLOW_TOKEN)
       # -------------------------
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v8
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.WORKFLOW_TOKEN }}
           branch: ${{ inputs.pr-branch }}
           title: ${{ inputs.pr-title }}
           body: ${{ inputs.pr-body }}
